@@ -11,9 +11,11 @@ def find_keywords(text):
     rv = set(rv)
     rv = list(rv)
     return rv
-    
 
+editoras = ["COEDIT", "Conselho", "Outros"]
+statuses = ["OK", "Erro", "Descontinuado", "Duplicado"]
 spalm = []
+done = []
 livraria = {}
 codigo_spalm = []
 regex_out = ["a", "as", "na", "nas", "o", "os", "no", "nos", "e"]
@@ -30,6 +32,17 @@ def match_string(s, kw1):
         rv += kw2.count(kw)
     return rv
 
+def write_csv(filename, *args):
+    """TODO: Write args into file
+    :returns: nothing
+    
+    """
+    with open(filename, 'a') as csvfile:
+        wrtr = csv.writer( csvfile, delimiter=';', lineterminator='\n' )
+        wrtr.writerow(args)
+
+    pass
+
 def read_csv(filename):
     print('Reading', filename)
     with open(filename, 'r') as csvfile:
@@ -38,20 +51,25 @@ def read_csv(filename):
         next(rows, None)
         for row in rows:
             yield row
-            #  return
 
 for row in read_csv('spalm.csv'):
     title = row[0]
     number = row[1]
     spalm.append([title, number])
 
+for row in read_csv('done.csv'):
+    done.append(row)
+#  assert(false)
 
-for row in read_csv('livraria.csv'):
-    title = row[0]
+for index, row in enumerate(read_csv('livraria.csv')):
+    print('--------------------------------------------------------------')
+    if len(done) > index and done[index] == row:
+        print('O título abaixo já foi processado')
+        print(row)
+        continue
+    title, sku, price, qtd, enabled, _, _ = row
     kw = find_keywords(title)
     livraria[title] = kw
-    print(title)
-    print(kw)
     matches = []
     for spalm_title, num in spalm:
         match = match_string(spalm_title, kw)
@@ -61,8 +79,34 @@ for row in read_csv('livraria.csv'):
             #  print(v, len(matches))
             #  sleep(5)
     matches = sorted(matches, key=lambda s :s[0], reverse=True)
-    for i, row in enumerate(matches):
-        print("{:0=2d} Score:{}, Título: {}, Código: {}".format(i, *row))
-    break
 
-    #  spalm.append([title, number])
+    try:
+        print("Título Livraria: {}".format(title))
+        print("Palavras Chave: {}".format(kw))
+        for i, match in enumerate(matches):
+            print("{:0=2d} Score:{}, Título: {}, Código: {}".format(i+1, *match))
+
+        choice = int(input("Escolha uma das alternativas:"))
+        _, spalm_title, code = matches[choice-1]
+        print("Você escolheu: {0} : {1}".format(spalm_title, code))
+    except Exception as e:
+        raise e
+
+    try:
+        for i, editor in enumerate(editoras):
+            print("{:02}: {} ".format(i+1, editor))
+        choice = int(input("Escolha a editora deste título: "))
+        editor = editoras[choice-1]
+    except Exception as e:
+        raise e
+
+    try:
+        for i, status in enumerate(statuses):
+            print("{:02}: {} ".format(i+1, status))
+        choice = int(input("Escolha o status deste título: "))
+        editor = status[choice-1]
+    except Exception as e:
+        raise e
+
+    write_csv('out.csv', code, title, spalm_title, editor, status, enabled, qtd)
+    write_csv('done.csv', *row)
